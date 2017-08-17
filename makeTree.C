@@ -12,8 +12,8 @@ void makeTree(char* file1, char* file2, char* file3, char* file4)
   		}
 
 
-	FILE* f001File = fopen(file2, "r");
-		if (!f001File) {
+	FILE* fValueFile = fopen(file2, "r");
+		if (!fValueFile) {
     		printf ("Cannot open file '%s'.\n", file2);
     	return;
   		}
@@ -34,47 +34,35 @@ void makeTree(char* file1, char* file2, char* file3, char* file4)
 	TFile *treeFile = new TFile("coolTree.root","RECREATE"); //output file for tree that will hold all the data 
 	TTree *tree = new TTree("coolNtuple","data from all 4 files"); //tree that will hold all the data
 	
-
-	typedef struct{Int_t sector_s, layer_s, channel_s, stat;} STATUS; 
-
-	typedef struct{Int_t sector_f, layer_f, channel_f, f;} F001; 
-
-	typedef struct{
-		Int_t sector_n, layer_n, channel_n; 
-		Float_t n;
-		} NOISE;
-
-	typedef struct{
-		Int_t sector_p, layer_p, channel_p;  
-		Float_t ped; 
-		} PEDESTAL;  
-
-
-	static STATUS status;
-	static F001 f001;
-	static NOISE noise;
-	static PEDESTAL pedestal; 
+	Int_t sector, layer, channel, status;
+//	Long64_t fvalue;
+	Float_t fvalue, noise, pedestal;
 
 	//create 4 branches on the tree; each branch has sector, layer, and channel 
-	tree->Branch("status", &status, "sector_s/I:layer_s/I:channel_s/I:stat/I");
-	tree->Branch("f001", &f001, "sector_f/I:layer_f/I:channel_f/I:f/I"); 
-	tree->Branch("noise", &noise, "sector_n/I:layer_n/I:channel_n/I:n/F"); 
-	tree->Branch("pedestal", &pedestal, "sector_p/I:layer_p/I:channel_p/I:ped/F"); 
+	tree->Branch("sector", &sector, "sector/I");
+	tree->Branch("layer", &layer, "layer/I");
+	tree->Branch("channel", &channel, "channel/I"); 
+	tree->Branch("status", &status, "status/I");
+	tree->Branch("fvalue", &fvalue, "fvalue/F"); 
+	tree->Branch("noise", &noise, "noise/F"); 
+	tree->Branch("pedestal", &pedestal, "pedestal/F"); 
 
 	int maxChar = 80; 
 	char line[maxChar]; 
 	char dir; //direction means X is eta and Y is phi 
 
+	int sec, lay, ch; 
+
 
 //loop over the 4 files, one at a time 
 	while (fgets(line, maxChar, statusFile)) {
-    	int n = sscanf(line, "%d %d %c %d %d", &status.sector_s, &status.layer_s, &dir, &status.channel_s, &status.stat);
+    	int n = sscanf(line, "%d %d %c %d %d", &sector, &layer, &dir, &channel, &status);
     	if (n!=5)   {
       		printf ("%s", line);
       		continue;
     	}
 
-    	if (dir=='Y') status.channel_s = -status.channel_s;
+    	if (dir=='Y') channel = -channel;
 
 		tree->Fill();
 
@@ -82,29 +70,25 @@ void makeTree(char* file1, char* file2, char* file3, char* file4)
   	
 	fclose(statusFile);
 
-	while (fgets(line, maxChar, f001File)) {
-    	int n = sscanf(line, "%d %d %c %d %d", &f001.sector_f, &f001.layer_f, &dir, &f001.channel_f, &f001.f);
+	while (fgets(line, maxChar, fValueFile)) {
+    	int n = sscanf(line, "%d %d %c %d %f", &sec, &lay, &dir, &ch, &fvalue);
     	if (n!=5)   {
       		printf ("%s", line);
       		continue;
     	}
-
-    	if (dir=='Y') f001.channel_f = -f001.channel_f;
 
 		tree->Fill();
 
   	}
   	
-	fclose(f001File);
+	fclose(fValueFile);
 
 	while (fgets(line, maxChar, noiseFile)) {
-    	int n = sscanf(line, "%d %d %c %d %f", &noise.sector_n, &noise.layer_n, &dir, &noise.channel_n, &noise.n);
+    	int n = sscanf(line, "%d %d %c %d %f", &sec, &lay, &dir, &ch, &noise);
     	if (n!=5)   {
       		printf ("%s", line);
       		continue;
     	}
-
-    	if (dir=='Y') noise.channel_n = -noise.channel_n;
 
 		tree->Fill();
 
@@ -114,13 +98,11 @@ void makeTree(char* file1, char* file2, char* file3, char* file4)
 
 
 	while (fgets(line, maxChar, pedFile)) {
-    	int n = sscanf(line, "%d %d %c %d %f", &pedestal.sector_p, &pedestal.layer_p, &dir, &pedestal.channel_p, &pedestal.ped);
+    	int n = sscanf(line, "%d %d %c %d %f", &sec, &lay, &dir, &ch, &pedestal);
     	if (n!=5)   {
       		printf ("%s", line);
       		continue;
     	}
-
-    	if (dir=='Y') pedestal.channel_p = -pedestal.channel_p;
 
 		tree->Fill();
 
@@ -128,7 +110,6 @@ void makeTree(char* file1, char* file2, char* file3, char* file4)
   	
 	fclose(pedFile);
 
-//	tree->Print(); 
 	treeFile->Write(); 
 
 
