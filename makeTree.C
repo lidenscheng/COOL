@@ -1,5 +1,6 @@
 #include <TFile.h> 
 #include <TTree.h>
+#include <TBranch.h>
 
 //Enter four text files for f001, noise, ped, and status values arguments 
 void makeTree(char* file1, char* file2, char* file3, char* file4)
@@ -33,25 +34,30 @@ void makeTree(char* file1, char* file2, char* file3, char* file4)
 
 	TFile *treeFile = new TFile("coolTree.root","RECREATE"); //output file for tree that will hold all the data 
 	TTree *tree = new TTree("coolNtuple","data from all 4 files"); //tree that will hold all the data
+
+	tree->SetEntries(32*4*(192+48)); 
+	TBranch *secBranch, *layBranch, *chBranch, *stBranch, *fBranch, *noiseBranch, *pedBranch; 
 	
 	Int_t sector, layer, channel, status;
-//	Long64_t fvalue;
 	Float_t fvalue, noise, pedestal;
 
 	//create 4 branches on the tree; each branch has sector, layer, and channel 
-	tree->Branch("sector", &sector, "sector/I");
-	tree->Branch("layer", &layer, "layer/I");
-	tree->Branch("channel", &channel, "channel/I"); 
-	tree->Branch("status", &status, "status/I");
-	tree->Branch("fvalue", &fvalue, "fvalue/F"); 
-	tree->Branch("noise", &noise, "noise/F"); 
-	tree->Branch("pedestal", &pedestal, "pedestal/F"); 
+	secBranch = tree->Branch("sector", &sector, "sector/I");
+	layBranch= tree->Branch("layer", &layer, "layer/I");
+	chBranch = tree->Branch("channel", &channel, "channel/I"); 
+	stBranch = tree->Branch("status", &status, "status/I");
+	fBranch = tree->Branch("fvalue", &fvalue, "fvalue/F"); 
+	noiseBranch = tree->Branch("noise", &noise, "noise/F"); 
+	pedBranch = tree->Branch("pedestal", &pedestal, "pedestal/F"); 
+
+
 
 	int maxChar = 80; 
 	char line[maxChar]; 
 	char dir; //direction means X is eta and Y is phi 
 
 	int sec, lay, ch; 
+
 
 
 //loop over the 4 files, one at a time 
@@ -64,11 +70,16 @@ void makeTree(char* file1, char* file2, char* file3, char* file4)
 
     	if (dir=='Y') channel = -channel;
 
-		tree->Fill();
+		secBranch->Fill();
+		layBranch->Fill();
+		chBranch->Fill();
+		stBranch->Fill();
 
   	}
   	
 	fclose(statusFile);
+
+//	fBranch = tree->Branch("fvalue", &fvalue, "fvalue/F"); 
 
 	while (fgets(line, maxChar, fValueFile)) {
     	int n = sscanf(line, "%d %d %c %d %f", &sec, &lay, &dir, &ch, &fvalue);
@@ -77,11 +88,14 @@ void makeTree(char* file1, char* file2, char* file3, char* file4)
       		continue;
     	}
 
-		tree->Fill();
+		fBranch->Fill();
 
   	}
   	
 	fclose(fValueFile);
+
+//	noiseBranch = tree->Branch("noise", &noise, "noise/F"); 
+
 
 	while (fgets(line, maxChar, noiseFile)) {
     	int n = sscanf(line, "%d %d %c %d %f", &sec, &lay, &dir, &ch, &noise);
@@ -90,12 +104,13 @@ void makeTree(char* file1, char* file2, char* file3, char* file4)
       		continue;
     	}
 
-		tree->Fill();
+		noiseBranch->Fill();
 
   	}
   	
 	fclose(noiseFile);
 
+//	pedBranch = tree->Branch("pedestal", &pedestal, "pedestal/F"); 
 
 	while (fgets(line, maxChar, pedFile)) {
     	int n = sscanf(line, "%d %d %c %d %f", &sec, &lay, &dir, &ch, &pedestal);
@@ -104,11 +119,12 @@ void makeTree(char* file1, char* file2, char* file3, char* file4)
       		continue;
     	}
 
-		tree->Fill();
+		pedBranch->Fill();
 
   	}
   	
 	fclose(pedFile);
+
 
 	treeFile->Write(); 
 
